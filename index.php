@@ -42,8 +42,14 @@ if(@$post['submit']) {
     $database->bind(':post', $body);
     $database->bind(':author_id', $id);
     $database->execute();
-    if ($database->lastInsertId()) {
-        echo '<p> Post Added! </p>';
+    $users_id = $database->lastInsertId();
+    if(isset($_POST['tag'])) {
+        foreach ($_POST['tag'] as $value) {
+            $database->query('INSERT INTO blog_post_tags (blog_post_id, tag_id) VALUES (:blog_post_id, :tag_id)');
+            $database->bind(':blog_post_id', $users_id);
+            $database->bind(':tag_id', $value);
+            $database->execute();
+        }
     }
 }
 
@@ -59,7 +65,7 @@ else {
     echo header('location: sheets/account.php');
 }
 
-        $database->query('SELECT * FROM blog_post');
+$database->query('SELECT * FROM blog_post');
 $rows = $database->resultset();
 ?>
 
@@ -74,41 +80,44 @@ $rows = $database->resultset();
 <header>
     <nav class="navbar navbar-default">
         <div class="container-fluid">
-            <!-- Brand and toggle get grouped for better mobile display -->
             <div class="navbar-header">
-                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                </button>
-                <a class="navbar-brand" href="index.php"><span class="glyphicon glyphicon-pencil">Blog</span></a>
+                <span class="glyphicon glyphicon-pencil navbar-brand">Blog</span>
             </div>
-
-            <!-- Collect the nav links, forms, and other content for toggling -->
             <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
                 <ul class="nav navbar-nav">
                     <li class="active"><a href="index.php">Home page <span class="sr-only"></span></a></li>
                     <li class="dropdown"><a href="sheets/account.php">Account</a></li>
                 </ul>
-            </div><!-- /.navbar-collapse -->
-        </div><!-- /.container-fluid -->
+            </div>
+        </div>
     </nav>
 </header>
 <div class="row row-content">
-<h1 style="text-align: center;" class="container">
+    <h1 style="text-align: center;" class="container">
     <span class="label label-default">
         Add Post
     </span>
-</h1>
-<form class="form-group-lg" style="text-align: center" method="post" action="<?php $_SERVER['PHP_SELF']; ?>">
-    <p style="padding: 5px;"></p>
-    <input type="text" name="title" placeholder="Add a title..." /><br /><br />
-    <textarea name="post" placeholder="Post body..." style="height: 100px; width: 500px;"></textarea><br /><br />
-    <button type="submit" name="submit" value="Submit" class="btn-sm btn-default">
-        Submit
-    </button>
-</form>
+    </h1>
+    <form class="form-group-lg" style="text-align: center" method="post" action="<?php $_SERVER['PHP_SELF']; ?>">
+        <p style="padding: 5px;"></p>
+        <input type="text" name="title" placeholder="Add a title..." /><br /><br />
+        <textarea name="post" placeholder="Post body..." style="height: 100px; width: 500px;"></textarea><br /><br />
+        <label>Post Tags</label><br>
+        <?php
+        $database->query('SELECT * FROM tags');
+        $tags = $database->resultset();
+        echo '<div class="btn-group" data-toggle="buttons">';
+        foreach($tags as $row) {
+            echo '<label class="btn btn-info"><input type="checkbox" name="tag[]" value="' . $row['id'] .'"> '. $row['name'] . '</label>&nbsp;';
+        }
+        echo '</div>';
+        echo '<p style="padding: 5px"></p>';
+        echo '<br />';
+        ?>
+        <button type="submit" name="submit" value="Submit" class="btn-sm btn-default">
+            Submit
+        </button>
+    </form>
 </div>
 <h1 class="container" style="text-align: center; padding: 5px;">
     <span class="label label-default">
@@ -133,6 +142,14 @@ $rows = $database->resultset();
                 $database->bind(':id',$row['author_id']);
                 $author = $database->fetch();
                 echo 'By ' .$author['username'];
+                echo '<p style="padding: 1px;"></p> <br />';
+
+                $database->query('SELECT t.id, t.name FROM blog_post p LEFT JOIN blog_post_tags pt ON p.id = pt.blog_post_id LEFT JOIN tags t ON pt.tag_id = t.id WHERE p.id = :pid');
+                $database->bind(':pid', $row['id']);
+                $displaytags = $database->resultset();
+                foreach($displaytags as $displaytag) {
+                    echo '<span class="label label-info">'. $displaytag['name'] .'</span>';
+                }
                 ?>
             </h5>
             <p>
@@ -141,6 +158,7 @@ $rows = $database->resultset();
                 ?>
             </p>
             <br />
+
 
             <form method="post" action="<?php $_SERVER['PHP_SELF']?>">
                 <input type='hidden' name="delete_id" value="<?php echo $row ['id']; ?>">
@@ -160,4 +178,6 @@ $rows = $database->resultset();
         </p>
     </div>
 </div>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 </body>
